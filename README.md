@@ -58,3 +58,6 @@ http://testphp.vulnweb.com
 ```yaml
 cat domains.txt | emailextractor -c 50 -t 30 --verbose
 ```
+
+## Demo Output
+<img width="1912" height="1032" alt="image" src="https://github.com/user-attachments/assets/7e87c83f-8c9c-48d1-b24b-2991b4381ca6" />
