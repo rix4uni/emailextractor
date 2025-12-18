@@ -5,7 +5,7 @@ import (
 )
 
 // prints the version message
-const version = "v0.0.2"
+const version = "v0.0.3"
 
 func PrintVersion() {
 	fmt.Printf("Current emailextractor version %s\n", version)
@@ -20,5 +20,5 @@ func PrintBanner() {
 /  __// / / / / // /_/ // // //  __/_>  < / /_ / /   / /_/ // /__ / /_ / /_/ // /    
 \___//_/ /_/ /_/ \__,_//_//_/ \___//_/|_| \__//_/    \__,_/ \___/ \__/ \____//_/
 `
-    fmt.Printf("%s\n%75s\n\n", banner, "Current emailextractor version "+version)
+	fmt.Printf("%s\n%75s\n\n", banner, "Current emailextractor version "+version)
 }
