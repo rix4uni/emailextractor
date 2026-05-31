@@ -17,9 +17,9 @@ go install github.com/rix4uni/emailextractor@latest
 
 ## Download prebuilt binaries
 ```
-wget https://github.com/rix4uni/emailextractor/releases/download/v0.0.3/emailextractor-linux-amd64-0.0.3.tgz
-tar -xvzf emailextractor-linux-amd64-0.0.3.tgz
-rm -rf emailextractor-linux-amd64-0.0.3.tgz
+wget https://github.com/rix4uni/emailextractor/releases/download/v0.0.4/emailextractor-linux-amd64-0.0.4.tgz
+tar -xvzf emailextractor-linux-amd64-0.0.4.tgz
+rm -rf emailextractor-linux-amd64-0.0.4.tgz
 mv emailextractor ~/go/bin/emailextractor
 ```
 Or download [binary release](https://github.com/rix4uni/emailextractor/releases) for your platform.

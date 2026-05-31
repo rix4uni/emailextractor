@@ -81,11 +81,16 @@ func shouldExclude(link string) bool {
 
 func isValidEmail(email string) bool {
 	// Additional validation to exclude common false positives
-	if strings.Contains(strings.ToLower(email), "example") {
+	lower := strings.ToLower(email)
+	if strings.Contains(lower, "example") {
 		return false
 	}
-	if strings.Contains(strings.ToLower(email), "email") {
-		return false
+	// Reject obvious placeholder patterns, not legitimate substrings
+	placeholders := []string{"your@email", "info@email", "name@email", "user@email", "test@email", "admin@email"}
+	for _, p := range placeholders {
+		if lower == p || strings.HasPrefix(lower, p+".") || strings.HasSuffix(lower, "@email") {
+			return false
+		}
 	}
 	if len(email) < 5 { // emails should be at least 5 chars (a@b.c)
 		return false
@@ -109,11 +114,18 @@ func extractEmailsAndLinks(targetURL, baseURL string, timeout time.Duration, ver
 		URL:    targetURL,
 	}
 
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		result.Error = err
+		return result
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
 	client := &http.Client{
 		Timeout: timeout,
 	}
 
-	resp, err := client.Get(targetURL)
+	resp, err := client.Do(req)
 	if err != nil {
 		if verbose {
 			fmt.Printf("%s[ERROR]%s Could not fetch %s -> %v\n", REDCOLOR, RESETCOLOR, targetURL, err)
@@ -237,12 +249,38 @@ func extractEmailsAndLinksWithChromeDP(targetURL, baseURL string, timeout time.D
 	ctx, cancelTimeout := context.WithTimeout(context.Background(), timeout)
 	defer cancelTimeout()
 
+	// Create a temporary user-data directory so we can delete it afterwards
+	tempDir, err := os.MkdirTemp("", "emailextractor-chrome-*")
+	if err != nil {
+		result.Error = err
+		return result
+	}
+	// Defer cleanup FIRST so it runs LAST (after all cancellations)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil && verbose {
+			fmt.Printf("%s[CHROMEDP-CLEANUP-ERROR]%s %v\n", REDCOLOR, RESETCOLOR, err)
+		}
+	}()
+
 	// Create chromedp context with headless browser
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-background-networking", true),
+		chromedp.Flag("disable-background-timer-throttling", true),
+		chromedp.Flag("disable-client-side-phishing-detection", true),
+		chromedp.Flag("disable-default-apps", true),
+		chromedp.Flag("disable-hang-monitor", true),
+		chromedp.Flag("disable-popup-blocking", true),
+		chromedp.Flag("disable-prompt-on-repost", true),
+		chromedp.Flag("disable-sync", true),
+		chromedp.Flag("metrics-recording-only", true),
+		chromedp.Flag("safebrowsing-disable-auto-update", true),
+		chromedp.Flag("password-store", "basic"),
+		chromedp.Flag("use-mock-keychain", true),
+		chromedp.UserDataDir(tempDir),
 	)
 
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, opts...)
@@ -259,7 +297,7 @@ func extractEmailsAndLinksWithChromeDP(targetURL, baseURL string, timeout time.D
 
 	// Navigate to page and wait for it to load
 	var htmlContent string
-	err := chromedp.Run(chromeCtx,
+	err = chromedp.Run(chromeCtx,
 		chromedp.Navigate(targetURL),
 		chromedp.WaitVisible("body", chromedp.ByQuery),
 		// Wait a bit for JavaScript to execute
@@ -705,6 +743,7 @@ func main() {
 	chromedpTimeoutDuration := time.Duration(*chromedpTimeout) * time.Second
 
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024), 1024*1024) // allow lines up to 1 MB
 	for scanner.Scan() {
 		domainURL := strings.TrimSpace(scanner.Text())
 		if domainURL != "" {
